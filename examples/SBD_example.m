@@ -1,0 +1,81 @@
+clc; clear;
+run('../init_sbd.m');
+
+%% I. SIMULATE DATA FOR SBD:
+%  =========================
+%% 1. Kernel
+kerneltype = 'simulated_STM';
+k = [31 31];           	% kernel size
+n = 5;                  % number of slices
+
+switch kerneltype
+    case 'random'
+    % Randomly generate n kernel slices
+        A0 = randn([k n]);
+    
+    case 'simulated_STM'
+    % Randomly choose n kernel slices from simulated LDoS data
+        load('example_data\LDoS_sim.mat');
+        sliceidx = randperm(size(LDoS_sim,3), n);
+        
+        A0 = NaN([k n]);
+        for i = 1:n
+            A0(:,:,i) = imresize(LDoS_sim(:,:,sliceidx(i)), k);
+        end
+        
+    otherwise
+        error('Invalid kernel type specified.')
+end
+
+% Need to put each slice back onto the sphere
+A0 = proj2oblique(A0);
+
+%% 2. Activation map
+% Use cnormdpp to create a 'well-seperated' sparsity pattern
+% Use iidbernoulli for an iid sparsity pattern
+
+m = [256 256];          % image size for each slice / observation grid
+sparsity = 50;          % expected sparsity
+eta = 1e-3;             % additive noise variance
+
+X0 = cnormdpp(m, sparsity);
+%X0 = iidbernoulli(m, sparsity/prod(m));
+
+%% 3. Observation map
+Y = NaN([m n]);
+for i = 1:n
+    Y(:,:,i) = convfft2(A0(:,:,i), X0);     
+end
+Y = Y + sqrt(eta)*randn([m n]);
+
+%% II. Sparse Blind Deconvolution:
+%  ===============================
+A = proj2oblique(randn([k n]));
+X = randn(m);
+
+%% RUN SBD
+clc;
+[A, X, info] = AXsolve_PALM( Y, k, ...
+    n*0.2, 'A0', A, 'X0', X, ...
+    'Leps', 1.1, 'maxit', 5e2 );
+info %#ok<NOPTS>
+
+% PLOT RESULTS
+pltidx = randi(n);
+
+costs = info.costs;
+figure(1); semilogy(0:size(costs,1)-1, costs(:,1), 'r.'); hold on;
+semilogy((0:size(costs,1)-1)+0.5, costs(:,2), '.'); hold off;
+xlim([0 100]);
+
+Yhat = NaN([m n]);
+for i = 1:n
+   Yhat(:,:,i) = convfft2(A(:,:,i), X); 
+end
+figure(2); subplot(121); imagesc(abs(Y(:,:,pltidx))); 
+subplot(122); imagesc(abs(Yhat(:,:,pltidx)));
+
+figure(3); subplot(121); imagesc(abs(A0(:,:,pltidx))); 
+subplot(122); imagesc(abs(A(:,:,pltidx)));
+
+figure(4); subplot(121); imagesc(abs(X0)); subplot(122); imagesc(abs(X));
