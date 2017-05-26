@@ -36,7 +36,7 @@ A0 = proj2oblique(A0);
 
 m = [256 256];          % image size for each slice / observation grid
 sparsity = 50;          % expected sparsity
-eta = 1e-3;             % additive noise variance
+eta = 5e-4;             % additive noise variance
 
 X0 = cnormdpp(m, sparsity);
 %X0 = iidbernoulli(m, sparsity/prod(m));
@@ -56,11 +56,13 @@ X = randn(m);
 %% RUN SBD
 clc;
 [A, X, info] = AXsolve_PALM( Y, k, ...
-    n*0.2, 'A0', A, 'X0', X, ...
-    'Leps', 1.1, 'maxit', 5e2 );
+    n*0.1, 'A0', A, 'X0', X, ...
+    'Leps', 1.1, 'maxit', 5e3, 'dispfun', @(it, Y, A, X, costs) ...
+    d_dispfun(Y, A, X, costs, A0, X0, it, @() 1));
 info %#ok<NOPTS>
 
-% PLOT RESULTS
+%{
+PLOT RESULTS
 pltidx = randi(n);
 
 costs = info.costs;
@@ -79,3 +81,4 @@ figure(3); subplot(121); imagesc(abs(A0(:,:,pltidx)));
 subplot(122); imagesc(abs(A(:,:,pltidx)));
 
 figure(4); subplot(121); imagesc(abs(X0)); subplot(122); imagesc(abs(X));
+%}

@@ -9,9 +9,9 @@ function [ A, X, info ] = AXsolve_PALM( Y, k, lambda, varargin )
     d_maxit = 1e3;
     d_Leps = 1.1;
     d_difftol = 1e-3;
-    d_verbose = [];
+    d_verbose = floor(d_maxit / 10);
     d_showvars = false;
-    d_dispfun = @(it, Y, A, X, costs) 0;
+    d_dispfun = @() 0;
     
     p = inputParser;    
     addParameter(p, 'A0', proj2oblique(randn([k n])), @(A) (ismatrix(A) || ndims(A)==3));
@@ -28,9 +28,6 @@ function [ A, X, info ] = AXsolve_PALM( Y, k, lambda, varargin )
     A = p.Results.A0;
     X = p.Results.X0;
     p = rmfield(p.Results, {'A0', 'X0'});
-    if isempty(p.verbose)
-        p.verbose = floor(p.maxit/10);
-    end
     
     %% Iterate:    
     R = zeros([m n]);       % the residual (\mcA \boxast X - \mcY)
@@ -92,18 +89,12 @@ function [ A, X, info ] = AXsolve_PALM( Y, k, lambda, varargin )
         repeat = (it < p.maxit) && ~zeroX && ~tolreached;
         
         % Display update info:
-        if p.verbose > 0 && (~mod(it, p.verbose) || it==1 || ~repeat)
-            updatestr = sprintf('Iteration %s%d', ...
-                blanks(floor(log10(p.maxit))-floor(log10(it))), it);
+        if verbose > 0 && (~mod(it, verbose) || it==1 || ~repeat)
+            updatestr = sprintf('Iteration %d', it);
             if ~repeat
-                updatestr = [updatestr ' (final)']; %#ok<*AGROW>
+                updatestr = [updatestr ' (final iteration)'];
             end
-            updatestr = [updatestr ...
-                sprintf(': cost = %.4e, diff = %.4e, ||rgrad(A)||_F = %.4e.', ...
-                costs(it,2), max(diffX, diffA), gradnormA)];
-            disp(updatestr);
-            
-            p.dispfun(it, Y, A, X, costs(:,2));
+            updatestr = [updatestr ': cost = %.4e
         end
     end
     
@@ -111,8 +102,7 @@ function [ A, X, info ] = AXsolve_PALM( Y, k, lambda, varargin )
     info.maxitreached = it >= p.maxit;
     info.zeroX = zeroX;
     info.tolreached = tolreached;
-    info.tolcrit = {'diffX' 'diffA' 'gradnormA'};
-    info.critvals = [diffX diffA gradnormA];
+    info.tolcrit = [diffX diffA gradnormA];
     info.L = [LX LA];
     info.costs = costs;     % note that these are costs BEFORE update
 end

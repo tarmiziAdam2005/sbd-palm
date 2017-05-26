@@ -1,0 +1,24 @@
+function d_dispfun( it, Y, A, X, costs, sliceidx )
+%D_DISPFUN  Default display function for use when A0 and X0 are available.
+%   sliceidx can be a function handle that generates random numbers
+
+    text(.75,1.25,'This is an overall title on subplot');
+    
+    subplot(245);
+    semilogy(1:numel(costs), costs, '.');
+    xlim([1 numel(costs)]);
+
+    Yhat = NaN([m n]);
+    for i = 1:n
+       Yhat(:,:,i) = convfft2(A(:,:,i), X); 
+    end
+    subplot(241); imagesc(abs(Y(:,:,pltidx))); 
+    subplot(122); imagesc(abs(Yhat(:,:,pltidx)));
+
+    figure(3); subplot(121); imagesc(abs(A0(:,:,pltidx))); 
+    subplot(122); imagesc(abs(A(:,:,pltidx)));
+
+    figure(4); subplot(121); imagesc(abs(X0)); subplot(122); imagesc(abs(X));
+
+end
+
